@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../db/database");
+const authMiddleware = require("../middleware/authMiddleware");
 
 // Hämta alla maträtter från databasen
 router.get("/", (req, res) => {
@@ -19,7 +20,7 @@ router.get("/", (req, res) => {
 });
 
 // Lägg till ny maträtt
-router.post("/", (req, res) => {
+router.post("/", authMiddleware, (req, res) => {
 
     const { title, description, price, category, image } = req.body;
 
@@ -55,7 +56,7 @@ router.post("/", (req, res) => {
 });
 
 // Radera en maträtt
-router.delete("/:id", (req, res) => {
+router.delete("/:id", authMiddleware, (req, res) => {
     const id = req.params.id;
 
     const sql = "DELETE FROM menu WHERE id = ?";
@@ -81,7 +82,7 @@ router.delete("/:id", (req, res) => {
 });
 
 // Uppdatera en maträtt
-router.put("/:id", (req, res) => {
+router.put("/:id", authMiddleware, (req, res) => {
     const id = req.params.id;
     const { title, description, price, category, image } = req.body;
 
