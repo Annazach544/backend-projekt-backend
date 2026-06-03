@@ -1,121 +1,61 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../db/database");
-const authMiddleware = require("../middleware/authMiddleware");
+const MenuItem = require("../models/MenuItem");
+const verifyToken = require("../middleware/authMiddleware");
 
-// Hämta alla maträtter från databasen
-router.get("/", (req, res) => {
-    const sql = "SELECT * FROM menu";
-
-    db.all(sql, [], (err, rows) => {
-        if (err) {
-            return res.status(500).json({
-                message: "Något gick fel vid hämtning av meny",
-                error: err.message
-            });
-        }
-
-        res.json(rows);
-    });
-});
-
-// Lägg till ny maträtt
-router.post("/", authMiddleware, (req, res) => {
-
-    const { title, description, price, category, image } = req.body;
-
-    if (!title || !description || !price || !category) {
-        return res.status(400).json({
-            message: "Alla obligatoriska fält måste fyllas i"
-        });
+// Hämta alla maträtter
+router.get("/", async (req, res) => {
+    try {
+        const menuItems = await MenuItem.find();
+        res.json(menuItems);
+    } catch (error) {
+        res.status(500).json({ message: "Kunde inte hämta meny" });
     }
-
-    const sql = `
-        INSERT INTO menu(title, description, price, category, image)
-        VALUES (?, ?, ?, ?, ?)
-    `;
-
-    db.run(
-        sql,
-        [title, description, price, category, image],
-        function(err) {
-
-            if (err) {
-                return res.status(500).json({
-                    message: "Fel vid lagring av maträtt",
-                    error: err.message
-                });
-            }
-
-            res.status(201).json({
-                message: "Maträtt skapad",
-                id: this.lastID
-            });
-        }
-    );
 });
 
-// Radera en maträtt
-router.delete("/:id", authMiddleware, (req, res) => {
-    const id = req.params.id;
-
-    const sql = "DELETE FROM menu WHERE id = ?";
-
-    db.run(sql, [id], function(err) {
-        if (err) {
-            return res.status(500).json({
-                message: "Fel vid radering av maträtt",
-                error: err.message
-            });
-        }
-
-        if (this.changes === 0) {
-            return res.status(404).json({
-                message: "Ingen maträtt hittades med detta id"
-            });
-        }
-
-        res.json({
-            message: "Maträtt raderad"
-        });
-    });
-});
-
-// Uppdatera en maträtt
-router.put("/:id", authMiddleware, (req, res) => {
-    const id = req.params.id;
-    const { title, description, price, category, image } = req.body;
-
-    if (!title || !description || !price || !category) {
-        return res.status(400).json({
-            message: "Alla obligatoriska fält måste fyllas i"
-        });
+// Skapa ny maträtt
+router.post("/", verifyToken, async (req, res) => {
+    try {
+        const menuItem = new MenuItem(req.body);
+        const savedItem = await menuItem.save();
+        res.status(201).json(savedItem);
+    } catch (error) {
+        res.status(400).json({ message: "Kunde inte skapa maträtt" });
     }
+});
 
-    const sql = `
-        UPDATE menu
-        SET title = ?, description = ?, price = ?, category = ?, image = ?
-        WHERE id = ?
-    `;
+// Uppdatera maträtt
+router.put("/:id", verifyToken, async (req, res) => {
+    try {
+        const updatedItem = await MenuItem.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true, runValidators: true }
+        );
 
-    db.run(sql, [title, description, price, category, image, id], function(err) {
-        if (err) {
-            return res.status(500).json({
-                message: "Fel vid uppdatering av maträtt",
-                error: err.message
-            });
+        if (!updatedItem) {
+            return res.status(404).json({ message: "Maträtt hittades inte" });
         }
 
-        if (this.changes === 0) {
-            return res.status(404).json({
-                message: "Ingen maträtt hittades med detta id"
-            });
+        res.json(updatedItem);
+    } catch (error) {
+        res.status(400).json({ message: "Kunde inte uppdatera maträtt" });
+    }
+});
+
+// Radera maträtt
+router.delete("/:id", verifyToken, async (req, res) => {
+    try {
+        const deletedItem = await MenuItem.findByIdAndDelete(req.params.id);
+
+        if (!deletedItem) {
+            return res.status(404).json({ message: "Maträtt hittades inte" });
         }
 
-        res.json({
-            message: "Maträtt uppdaterad"
-        });
-    });
+        res.json({ message: "Maträtt raderad" });
+    } catch (error) {
+        res.status(400).json({ message: "Kunde inte radera maträtt" });
+    }
 });
 
 module.exports = router;

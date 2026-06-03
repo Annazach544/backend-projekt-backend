@@ -1,22 +1,13 @@
-const sqlite3 = require("sqlite3").verbose();
+const mongoose = require("mongoose");
 
-const db = new sqlite3.Database("./database.db", (err) => {
-    if (err) {
-        console.error("Fel vid anslutning till databas:", err.message);
-    } else {
-        console.log("Ansluten till SQLite-databas");
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.DATABASE);
+        console.log("Ansluten till MongoDB");
+    } catch (error) {
+        console.error("Kunde inte ansluta till MongoDB:", error);
+        process.exit(1);
     }
-});
+};
 
-db.run(`
-    CREATE TABLE IF NOT EXISTS menu (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        description TEXT NOT NULL,
-        price INTEGER NOT NULL,
-        category TEXT NOT NULL,
-        image TEXT
-    )
-`);
-
-module.exports = db;
+module.exports = connectDB;
